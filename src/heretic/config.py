@@ -126,7 +126,7 @@ class Settings(BaseSettings):
     )
 
     max_response_length: int = Field(
-        default=100,
+        default=32,
         description="Maximum number of tokens to generate for each response.",
     )
 
@@ -307,7 +307,7 @@ class Settings(BaseSettings):
     bad_evaluation_prompts: DatasetSpecification = Field(
         default=DatasetSpecification(
             dataset="AWuhrmann/TFBench",
-            split="test",
+            split="train[:100]",
             column="prompt",
         ),
         description="Dataset of prompts that tend to result in refusals (used for evaluating model performance).",
