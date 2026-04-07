@@ -130,6 +130,15 @@ class Settings(BaseSettings):
         description="Maximum number of tokens to generate for each response.",
     )
 
+    lora_target_modules: list[str] | None = Field(
+        default=None,
+        description=(
+            "Names of the modules to target with LoRA during abliteration. "
+            "If None, modules are discovered automatically from the model architecture. "
+            'Example: ["q_proj", "k_proj", "v_proj"] for models like Gemma 4.'
+        ),
+    )
+
     print_responses: bool = Field(
         default=False,
         description="Whether to print prompt/response pairs when counting refusals.",

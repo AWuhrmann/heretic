@@ -167,20 +167,23 @@ class Model:
         # This is more robust than splitting component keys (e.g. "attn.o_proj" -> "o_proj")
         # because hybrid models like Qwen3.5 MoE have modules with different names
         # across layers (e.g. "o_proj" on attention layers, "out_proj" on linear attention layers).
-        target_modules_set: set[str] = set()
+        if self.settings.lora_target_modules is not None:
+            target_modules = self.settings.lora_target_modules
+        else:
+            target_modules_set: set[str] = set()
 
-        for layer_index, layer in enumerate(self.get_layers()):
-            module_id_to_leaf_name = {
-                id(module): module_name.split(".")[-1]
-                for module_name, module in layer.named_modules()
-            }
+            for layer_index, layer in enumerate(self.get_layers()):
+                module_id_to_leaf_name = {
+                    id(module): module_name.split(".")[-1]
+                    for module_name, module in layer.named_modules()
+                }
 
-            for modules in self.get_layer_modules(layer_index).values():
-                for module in modules:
-                    if id(module) in module_id_to_leaf_name:
-                        target_modules_set.add(module_id_to_leaf_name[id(module)])
+                for modules in self.get_layer_modules(layer_index).values():
+                    for module in modules:
+                        if id(module) in module_id_to_leaf_name:
+                            target_modules_set.add(module_id_to_leaf_name[id(module)])
 
-        target_modules = list(target_modules_set)
+            target_modules = list(target_modules_set)
 
         if self.settings.row_normalization != RowNormalization.FULL:
             # Rank 1 is sufficient for directional ablation without renormalization.
@@ -337,6 +340,18 @@ class Model:
 
     def get_layer_modules(self, layer_index: int) -> dict[str, list[Module]]:
         layer = self.get_layers()[layer_index]
+
+        if self.settings.lora_target_modules is not None:
+            modules: dict[str, list[Module]] = {}
+            for name, module in layer.named_modules():
+                leaf_name = name.split(".")[-1]
+                if leaf_name in self.settings.lora_target_modules:
+                    if leaf_name not in modules:
+                        modules[leaf_name] = []
+                    modules[leaf_name].append(module)
+            total_modules = sum(len(mods) for mods in modules.values())
+            assert total_modules > 0, "No abliterable modules found in layer"
+            return modules
 
         modules = {}
 
