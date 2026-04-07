@@ -306,8 +306,8 @@ class Settings(BaseSettings):
 
     bad_evaluation_prompts: DatasetSpecification = Field(
         default=DatasetSpecification(
-            dataset="AWuhrmann/TFBench",
-            split="train[:100]",
+            dataset="AWuhrmann/TFBench-short",
+            split="train",
             column="prompt",
         ),
         description="Dataset of prompts that tend to result in refusals (used for evaluating model performance).",
