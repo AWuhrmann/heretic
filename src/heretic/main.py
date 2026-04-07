@@ -942,18 +942,10 @@ def run():
                                 continue
                             benchmark_original_model = scope == "Benchmark both models"
 
-                            print(
-                                f"Loading benchmark prompts from [bold]{settings.tfbench_prompts.dataset}[/]..."
-                            )
-                            tfbench_prompts = load_prompts(
-                                settings, settings.tfbench_prompts
-                            )
-                            print(f"* [bold]{len(tfbench_prompts)}[/] prompts loaded")
-
                             try:
                                 print("Counting model refusals...")
                                 responses = model.get_responses_batched(
-                                    tfbench_prompts,
+                                    evaluator.bad_prompts,
                                     skip_special_tokens=True,
                                 )
                                 refusal_count = sum(
@@ -968,7 +960,7 @@ def run():
                                     with model.model.disable_adapter():  # ty:ignore[call-non-callable]
                                         original_responses = (
                                             model.get_responses_batched(
-                                                tfbench_prompts,
+                                                evaluator.bad_prompts,
                                                 skip_special_tokens=True,
                                             )
                                         )
@@ -978,7 +970,7 @@ def run():
                                         if evaluator.is_refusal(response)
                                     )
 
-                                total = len(tfbench_prompts)
+                                total = len(evaluator.bad_prompts)
 
                                 def format_refusal_rate(count: int) -> str:
                                     return f"{count / total:.2%} ({count}/{total})"

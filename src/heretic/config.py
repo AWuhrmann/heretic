@@ -306,20 +306,11 @@ class Settings(BaseSettings):
 
     bad_evaluation_prompts: DatasetSpecification = Field(
         default=DatasetSpecification(
-            dataset="mlabonne/harmful_behaviors",
-            split="test[:100]",
-            column="text",
-        ),
-        description="Dataset of prompts that tend to result in refusals (used for evaluating model performance).",
-    )
-
-    tfbench_prompts: DatasetSpecification = Field(
-        default=DatasetSpecification(
             dataset="AWuhrmann/TFBench",
             split="test",
             column="prompt",
         ),
-        description="Dataset of prompts used for the TFBench refusal-rate benchmark.",
+        description="Dataset of prompts that tend to result in refusals (used for evaluating model performance).",
     )
 
     @classmethod
