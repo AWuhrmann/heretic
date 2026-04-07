@@ -341,6 +341,15 @@ class Model:
         modules = {}
 
         def try_add(component: str, module: Any):
+            # If the module doesn't directly hold a weight matrix, it is a wrapper
+            # (e.g. Gemma4ClippableLinear). Unwrap it to find the inner module that
+            # does, so PEFT can apply LoRA to a recognized type.
+            if isinstance(module, Module) and not hasattr(module, "weight"):
+                for child in module.children():
+                    if isinstance(child, Module) and hasattr(child, "weight"):
+                        module = child
+                        break
+
             # Only add if it's a proper nn.Module (PEFT can wrap these with LoRA)
             if isinstance(module, Module):
                 if component not in modules:
