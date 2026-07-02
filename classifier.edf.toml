@@ -1,6 +1,7 @@
 # CSCS Container Engine EDF for serving the HarmBench classifier via vLLM on Alps (GH200).
 # Built by build_classifier_image.sh. See launch_harmbench_run.sh for how this
-# gets started as one leg of the multi-node HarmBench-eval job.
+# gets started as one of two concurrent GPU-pinned srun steps sharing a
+# single-node job allocation alongside heretic.edf.toml.
 
 image = "/capstor/scratch/cscs/arthur/containers/vllm-classifier.sqsh"
 mounts = ["/capstor/scratch/cscs/arthur:/capstor/scratch/cscs/arthur"]

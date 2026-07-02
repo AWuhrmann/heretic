@@ -1,17 +1,20 @@
 #!/bin/bash
-# Multi-node HarmBench-judged abliteration run.
+# Single-node HarmBench-judged abliteration run.
 #
-# Requests 2 nodes in a single allocation: node 0 serves the HarmBench
-# classifier via vLLM (background), node 1 runs heretic's Optuna loop,
-# pointed at node 0 via --harmbench-classifier-url. One job to submit and
-# monitor; node discovery is automatic via $SLURM_JOB_NODELIST, no manual
-# coordination file needed.
+# One GH200 node has 4 GPUs, and both the classifier (13B) and the target
+# model (typically <70B here) each fit comfortably on a single GH200's
+# 96GB HBM3e -- so there's no need to split across nodes. Two concurrent
+# srun steps share one job allocation (--overlap), each requesting its own
+# GPU via --gpus=1 so Slurm's own GRES scheduler assigns distinct physical
+# GPUs and isolates them via cgroups; they talk over localhost instead of
+# cross-node hostnames.
 #
 # Usage: sbatch launch_harmbench_run.sh /path/to/model [extra heretic args...]
 #SBATCH --job-name=heretic-harmbench
 #SBATCH --partition=normal
 #SBATCH --account=a145
-#SBATCH --nodes=2
+#SBATCH --nodes=1
+#SBATCH --gpus-per-node=2
 #SBATCH --time=04:00:00
 #SBATCH --output=/capstor/scratch/cscs/arthur/heretic-harmbench-%j.log
 
@@ -19,6 +22,7 @@ set -euo pipefail
 
 REPO_DIR="/capstor/scratch/cscs/arthur/Apertus-1.5/heretic"
 CLASSIFIER_PORT=8000
+CLASSIFIER_URL="http://localhost:${CLASSIFIER_PORT}/v1"
 
 cd "$REPO_DIR"
 
@@ -28,15 +32,12 @@ if [ ! -f harmbench_behaviors.txt ]; then
 fi
 cp config.harmbench.toml config.toml
 
-# --- Resolve node hostnames: node 0 = classifier, node 1 = heretic ---
-NODES=($(scontrol show hostnames "$SLURM_JOB_NODELIST"))
-CLASSIFIER_NODE="${NODES[0]}"
-HERETIC_NODE="${NODES[1]}"
-echo "Classifier node: $CLASSIFIER_NODE"
-echo "Heretic node:    $HERETIC_NODE"
-
-# --- Start the classifier server on node 0, in the background ---
-srun --nodes=1 --ntasks=1 -w "$CLASSIFIER_NODE" \
+# --- Start the classifier server, in the background, on its own GPU ---
+# NOTE: not manually setting CUDA_VISIBLE_DEVICES here -- relying on Slurm's
+# GRES scheduler + --gpus=1 --overlap to hand each concurrent step a distinct
+# physical GPU and cgroup-isolate it. Unverified against this exact Slurm
+# config; if both steps end up on the same GPU, that's the thing to fix.
+srun --ntasks=1 --gpus=1 --overlap \
     --environment="$REPO_DIR/classifier.edf.toml" \
     vllm serve cais/HarmBench-Llama-2-13b-cls \
         --port "$CLASSIFIER_PORT" \
@@ -51,7 +52,6 @@ cleanup() {
 trap cleanup EXIT
 
 # --- Wait for the classifier to become ready (20s x 60 = 20min cap) ---
-CLASSIFIER_URL="http://${CLASSIFIER_NODE}:${CLASSIFIER_PORT}/v1"
 echo "Waiting for classifier at $CLASSIFIER_URL to become ready..."
 READY=0
 for i in $(seq 1 60); do
@@ -67,8 +67,8 @@ if [ "$READY" -ne 1 ]; then
     exit 1
 fi
 
-# --- Run heretic on node 1, pointed at the classifier ---
-srun --nodes=1 --ntasks=1 -w "$HERETIC_NODE" \
+# --- Run heretic on its own GPU, pointed at the classifier over localhost ---
+srun --ntasks=1 --gpus=1 --overlap \
     --environment="$REPO_DIR/heretic.edf.toml" \
     heretic \
         --harmbench-classifier-url "$CLASSIFIER_URL" \
