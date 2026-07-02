@@ -1,0 +1,14 @@
+# CSCS Container Engine EDF for serving the HarmBench classifier via vLLM on Alps (GH200).
+# Built by build_classifier_image.sh. See launch_harmbench_run.sh for how this
+# gets started as one leg of the multi-node HarmBench-eval job.
+
+image = "/capstor/scratch/cscs/arthur/containers/vllm-classifier.sqsh"
+mounts = ["/capstor/scratch/cscs/arthur:/capstor/scratch/cscs/arthur"]
+workdir = "/capstor/scratch/cscs/arthur"
+
+[env]
+HF_TOKEN = "$HF_TOKEN"
+# Cache HF downloads (the ~26GB Llama-2-13B classifier weights) on persistent
+# Lustre storage instead of the container's ephemeral root, so repeat runs
+# don't re-download.
+HF_HOME = "/capstor/scratch/cscs/arthur/hf_cache"

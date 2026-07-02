@@ -235,6 +235,27 @@ class Settings(BaseSettings):
         exclude=True,
     )
 
+    harmbench_classifier_url: str | None = Field(
+        default=None,
+        description=(
+            "Base URL (e.g. http://<host>:8000/v1) of a vLLM OpenAI-compatible server "
+            "serving cais/HarmBench-Llama-2-13b-cls. If set, refusal/compliance is judged "
+            "by this classifier instead of the local is_refusal() heuristic. "
+            "The classifier's own \"yes\" (behavior successfully exhibited) is treated as "
+            "a non-refusal, and \"no\" as a refusal."
+        ),
+    )
+
+    harmbench_classifier_model: str = Field(
+        default="cais/HarmBench-Llama-2-13b-cls",
+        description="Model name to request from the HarmBench classifier server (must match how it was served).",
+    )
+
+    harmbench_classifier_timeout: float = Field(
+        default=120.0,
+        description="Timeout in seconds for requests to the HarmBench classifier server.",
+    )
+
     print_residual_geometry: bool = Field(
         default=False,
         description="Whether to print detailed information about residuals and refusal directions.",

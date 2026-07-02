@@ -1217,9 +1217,9 @@ def run():
                                     skip_special_tokens=True,
                                 )
                                 refusal_count = sum(
-                                    1
-                                    for response in responses
-                                    if evaluator.is_refusal(response)
+                                    evaluator.classify_refusals(
+                                        evaluator.bad_prompts, responses
+                                    )
                                 )
 
                                 original_refusal_count: int | None = None
@@ -1233,9 +1233,9 @@ def run():
                                             )
                                         )
                                     original_refusal_count = sum(
-                                        1
-                                        for response in original_responses
-                                        if evaluator.is_refusal(response)
+                                        evaluator.classify_refusals(
+                                            evaluator.bad_prompts, original_responses
+                                        )
                                     )
 
                                 total = len(evaluator.bad_prompts)

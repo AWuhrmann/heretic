@@ -1,0 +1,17 @@
+# Rename this file to config.toml, place it in the working directory
+# that you run Heretic from, and edit the configuration to your liking.
+#
+# Judges refusal/compliance with the HarmBench classifier (cais/HarmBench-Llama-2-13b-cls)
+# served by a vLLM OpenAI-compatible server on a separate node, instead of the
+# local is_refusal() heuristic. See launch_harmbench_run.sh for how that server
+# gets started and how this URL gets filled in.
+#
+# harmbench_classifier_url is deliberately left unset here -- the launch script
+# substitutes the classifier node's actual address at submission time rather
+# than hardcoding it, since it depends on which node Slurm allocates.
+# harmbench_classifier_url = "http://<classifier-node>:8000/v1"
+
+[bad_evaluation_prompts]
+# Plain text file, one behavior per line -- split is optional for text files
+# and omitted here to use the whole file. See prepare_harmbench_data.sh.
+dataset = "harmbench_behaviors.txt"
