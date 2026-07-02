@@ -5,7 +5,7 @@ FROM nvcr.io/nvidia/pytorch:25.06-py3
 
 WORKDIR /workspace/heretic
 
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
 COPY config.default.toml config.nohumor.toml config.noslop.toml ./
 
