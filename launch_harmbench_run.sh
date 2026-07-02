@@ -2,12 +2,19 @@
 # Single-node HarmBench-judged abliteration run.
 #
 # One GH200 node has 4 GPUs, and both the classifier (13B) and the target
-# model (typically <70B here) each fit comfortably on a single GH200's
-# 96GB HBM3e -- so there's no need to split across nodes. Two concurrent
-# srun steps share one job allocation (--overlap), each requesting its own
-# GPU via --gpus=1 so Slurm's own GRES scheduler assigns distinct physical
-# GPUs and isolates them via cgroups; they talk over localhost instead of
-# cross-node hostnames.
+# model each fit comfortably on a single GH200's 120GB HBM3e -- so there's
+# no need to split across nodes. Two concurrent srun steps share one job
+# allocation (--overlap), talking over localhost instead of cross-node
+# hostnames.
+#
+# GPU assignment: verified empirically (test_gpu_isolation.sh) that this
+# cluster's Slurm config does NOT cgroup-isolate GPUs per --gpus=1 step, and
+# overwrites any CUDA_VISIBLE_DEVICES exported before srun. What does work:
+# setting it via `env` as part of the step's own command, after srun has
+# already launched it -- that survives and is respected by the CUDA runtime
+# (nvidia-smi itself ignores the var either way; it queries the driver
+# directly rather than going through libcudart, so seeing all 4 GPUs there
+# is not evidence against isolation).
 #
 # Usage: sbatch launch_harmbench_run.sh /path/to/model [extra heretic args...]
 #SBATCH --job-name=heretic-harmbench
@@ -32,14 +39,10 @@ if [ ! -f harmbench_behaviors.txt ]; then
 fi
 cp config.harmbench.toml config.toml
 
-# --- Start the classifier server, in the background, on its own GPU ---
-# NOTE: not manually setting CUDA_VISIBLE_DEVICES here -- relying on Slurm's
-# GRES scheduler + --gpus=1 --overlap to hand each concurrent step a distinct
-# physical GPU and cgroup-isolate it. Unverified against this exact Slurm
-# config; if both steps end up on the same GPU, that's the thing to fix.
-srun --ntasks=1 --gpus=1 --overlap \
+# --- Start the classifier server, in the background, on GPU 0 ---
+srun --ntasks=1 --overlap \
     --environment="$REPO_DIR/classifier.edf.toml" \
-    vllm serve cais/HarmBench-Llama-2-13b-cls \
+    env CUDA_VISIBLE_DEVICES=0 vllm serve cais/HarmBench-Llama-2-13b-cls \
         --port "$CLASSIFIER_PORT" \
         --max-model-len 4096 \
     > "/capstor/scratch/cscs/arthur/classifier-${SLURM_JOB_ID}.log" 2>&1 &
@@ -67,9 +70,9 @@ if [ "$READY" -ne 1 ]; then
     exit 1
 fi
 
-# --- Run heretic on its own GPU, pointed at the classifier over localhost ---
-srun --ntasks=1 --gpus=1 --overlap \
+# --- Run heretic on GPU 1, pointed at the classifier over localhost ---
+srun --ntasks=1 --overlap \
     --environment="$REPO_DIR/heretic.edf.toml" \
-    heretic \
+    env CUDA_VISIBLE_DEVICES=1 heretic \
         --harmbench-classifier-url "$CLASSIFIER_URL" \
         "$@"
