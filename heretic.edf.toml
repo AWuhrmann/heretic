@@ -4,7 +4,11 @@
 #   srun --pty --environment=/capstor/scratch/cscs/arthur/Apertus-1.5/heretic/heretic.edf.toml -A a145 --partition=normal bash
 
 image = "/capstor/scratch/cscs/arthur/containers/heretic.sqsh"
-mounts = ["/capstor/scratch/cscs/arthur:/capstor/scratch/cscs/arthur"]
+mounts = [
+    "/capstor/scratch/cscs/arthur:/capstor/scratch/cscs/arthur",
+    # Shared Apertus-1.5 model store -- read-only, do not write here.
+    "/capstor/store/cscs/swissai/infra01/models:/capstor/store/cscs/swissai/infra01/models:ro",
+]
 workdir = "/capstor/scratch/cscs/arthur/Apertus-1.5/heretic"
 
 # Slurm/enroot normally forward exported host env vars (like HF_TOKEN) into
