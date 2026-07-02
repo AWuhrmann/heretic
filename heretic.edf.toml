@@ -1,0 +1,20 @@
+# CSCS Container Engine EDF for running heretic on Alps (GH200, partition=normal).
+# Usage:
+#   export HF_TOKEN=<your token>
+#   srun --pty --environment=/capstor/scratch/cscs/arthur/Apertus-1.5/heretic/heretic.edf.toml -A a145 --partition=normal bash
+
+image = "/capstor/scratch/cscs/arthur/containers/heretic.sqsh"
+mounts = ["/capstor/scratch/cscs/arthur:/capstor/scratch/cscs/arthur"]
+workdir = "/capstor/scratch/cscs/arthur/Apertus-1.5/heretic"
+
+# Slurm/enroot normally forward exported host env vars (like HF_TOKEN) into
+# the container automatically, so `export HF_TOKEN=...` before srun should
+# already be enough. This [env] entry is a belt-and-suspenders fallback in
+# case the Container Engine does NOT pass it through by default.
+# NOTE: I haven't verified the exact substitution syntax against CSCS's own
+# Container Engine doc page (only inferred from the podman/enroot page) --
+# if this errors or the var doesn't show up inside the container, drop this
+# section and rely on plain env passthrough instead, or check the doc for
+# the correct syntax.
+[env]
+HF_TOKEN = "$HF_TOKEN"

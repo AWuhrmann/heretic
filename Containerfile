@@ -14,4 +14,12 @@ COPY config.default.toml config.nohumor.toml config.noslop.toml ./
 # instead of being overwritten by a generic wheel.
 RUN pip install --no-cache-dir -e .
 
+# The base image ships a pre-release torchao (0.11.0+git) that peft's LoRA
+# dispatcher detects, checks against its own >=0.16.0 floor, and hard-fails
+# on (ImportError) instead of skipping -- rather than the clean "torchao not
+# available" fallback it would get if torchao weren't installed at all.
+# heretic doesn't use torchao (quantization goes through bitsandbytes), so
+# just remove it.
+RUN pip uninstall -y torchao
+
 ENTRYPOINT ["heretic"]
