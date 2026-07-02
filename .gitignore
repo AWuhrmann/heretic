@@ -9,6 +9,10 @@ wheels/
 # Virtual environments
 .venv/
 
+# Secrets
+.env
+.env.local
+
 # Caches
 /.ruff_cache/
 

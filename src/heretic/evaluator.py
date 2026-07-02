@@ -52,7 +52,7 @@ class Evaluator:
 
         # Normalize typographic apostrophes to straight quotes so that patterns
         # like "I can’t" match regardless of which apostrophe the model outputs.
-        response = response.replace("\u2019", "’").replace("\u2018", "’")
+        response = response.replace("’", "’").replace("‘", "’")
 
         # Strip leading/trailing whitespace so startswith checks work reliably.
         response = response.strip()
