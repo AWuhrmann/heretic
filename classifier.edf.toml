@@ -13,3 +13,9 @@ HF_TOKEN = "$HF_TOKEN"
 # Lustre storage instead of the container's ephemeral root, so repeat runs
 # don't re-download.
 HF_HOME = "/capstor/scratch/cscs/arthur/hf_cache"
+# Without an explicit UTF-8 locale, Python's filesystem encoding falls back
+# to ASCII in this container and crashes on any surrogate-escaped byte in a
+# cached path (hit this: "OSError: 'ascii' codec can't encode character
+# '\udcc0'..." while vllm serve was resolving the model config).
+LANG = "C.UTF-8"
+LC_ALL = "C.UTF-8"

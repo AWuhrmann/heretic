@@ -22,3 +22,8 @@ workdir = "/capstor/scratch/cscs/arthur/Apertus-1.5/heretic"
 # the correct syntax.
 [env]
 HF_TOKEN = "$HF_TOKEN"
+# Same locale fix as classifier.edf.toml -- preemptive, since this hit the
+# classifier server (ASCII filesystem-encoding crash on a surrogate-escaped
+# byte) and both images share the same base-container lineage.
+LANG = "C.UTF-8"
+LC_ALL = "C.UTF-8"
