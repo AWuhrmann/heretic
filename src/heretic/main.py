@@ -729,6 +729,51 @@ def run():
                     min_divergence = kl_divergence
                     best_trials.append(trial)
 
+            if settings.save_pareto_adapters_dir is not None:
+                print()
+                print(
+                    f"[bold green]Optimization finished![/] Saving "
+                    f"[bold]{len(best_trials)}[/] Pareto-optimal LoRA adapter(s) to "
+                    f"[bold]{settings.save_pareto_adapters_dir}[/]..."
+                )
+                for pareto_trial in best_trials:
+                    trial_directory = os.path.join(
+                        settings.save_pareto_adapters_dir,
+                        (
+                            f"trial_{pareto_trial.user_attrs['index']:03d}"
+                            f"_refusals-{pareto_trial.user_attrs['refusals']}"
+                            f"_kld-{pareto_trial.user_attrs['kl_divergence']:.4f}"
+                        ),
+                    )
+                    print()
+                    print(
+                        f"* Trial [bold]{pareto_trial.user_attrs['index']}[/] "
+                        f"(refusals: {pareto_trial.user_attrs['refusals']}/{len(evaluator.bad_prompts)}, "
+                        f"KL divergence: {pareto_trial.user_attrs['kl_divergence']:.4f}) "
+                        f"-> {trial_directory}"
+                    )
+                    print("  * Resetting model...")
+                    model.reset_model()
+                    print("  * Abliterating...")
+                    model.abliterate(
+                        refusal_directions,
+                        pareto_trial.user_attrs["direction_index"],
+                        {
+                            k: AbliterationParameters(**v)
+                            for k, v in pareto_trial.user_attrs["parameters"].items()
+                        },
+                    )
+                    print("  * Saving LoRA adapter...")
+                    model.model.save_pretrained(
+                        trial_directory,
+                        max_shard_size=settings.max_shard_size,
+                    )
+                print()
+                print(
+                    f"[bold green]Saved {len(best_trials)} Pareto-optimal adapter(s).[/]"
+                )
+                return
+
             choices = [
                 Choice(
                     title=(

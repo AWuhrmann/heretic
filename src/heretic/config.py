@@ -370,6 +370,16 @@ class Settings(BaseSettings):
         description='How to export the model: "merge", "adapter", or unset to prompt the user.',
     )
 
+    save_pareto_adapters_dir: str | None = Field(
+        default=None,
+        description=(
+            "If set, after the study finishes, save the LoRA adapter for every Pareto-optimal "
+            "trial (best refusals/KL divergence trade-offs) to a subdirectory of this path, "
+            "instead of entering the interactive post-optimization menu. Intended for headless "
+            "runs (e.g. batch jobs with no TTY), where that menu would otherwise crash on EOF."
+        ),
+    )
+
     max_shard_size: int | str = Field(
         default="5GB",
         description="Maximum size for individual safetensors files generated when exporting a model.",

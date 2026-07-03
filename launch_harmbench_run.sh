@@ -30,6 +30,9 @@ set -euo pipefail
 REPO_DIR="/capstor/scratch/cscs/arthur/Apertus-1.5/heretic"
 CLASSIFIER_PORT=8000
 CLASSIFIER_URL="http://localhost:${CLASSIFIER_PORT}/v1"
+# Namespaced by job ID so results from different runs never collide, kept on
+# scratch (not inside the repo) since these are output artifacts, not code.
+PARETO_ADAPTERS_DIR="/capstor/scratch/cscs/arthur/harmbench_results/${SLURM_JOB_ID}/pareto_adapters"
 
 cd "$REPO_DIR"
 
@@ -80,15 +83,17 @@ fi
 # an interactive "resume previous study?" prompt, and there's no TTY here
 # (sbatch/srun --overlap, not --pty), so that prompt would crash with EOFError.
 #
-# NOTE: this only covers the *start* of the run. This fork predates upstream's
-# headless-operation support (added after our fork point), so the
-# *post-optimization* flow (trial selection, then "what do you want to do
-# with the model" menu) is still interactive with no CLI escape hatch found
-# so far -- once a run actually reaches 200/200 trials, expect it to hang/
-# crash there too. Not fixed yet; out of scope for just getting trials running.
+# --save-pareto-adapters-dir closes the other interactive gap: once the study
+# finishes, heretic saves the LoRA adapter for every Pareto-optimal trial
+# (best refusals/KL divergence trade-offs) to this directory automatically,
+# instead of dropping into the interactive trial-selection/save menu that
+# would otherwise crash on EOF (no TTY available here either).
 srun --ntasks=1 --overlap \
     --environment="$REPO_DIR/heretic.edf.toml" \
     env CUDA_VISIBLE_DEVICES=1 heretic \
         --harmbench-classifier-url "$CLASSIFIER_URL" \
         --study-checkpoint-dir checkpoints-harmbench \
+        --save-pareto-adapters-dir "$PARETO_ADAPTERS_DIR" \
         "$@"
+
+echo "Pareto-optimal adapters saved to: $PARETO_ADAPTERS_DIR"
