@@ -17,6 +17,16 @@
 # is not evidence against isolation).
 #
 # Usage: sbatch launch_harmbench_run.sh /path/to/model [extra heretic args...]
+#
+# GPU count scales with #SBATCH --gpus-per-node below (default 2: 1 for the
+# classifier, 1 for heretic). For a model too big for one GPU (e.g. a 70B
+# model needing ~140GB, more than one GH200's 120GB), override it at
+# submission time instead of editing this script -- an sbatch CLI flag beats
+# a script's own #SBATCH directive:
+#   sbatch --gpus-per-node=3 launch_harmbench_run.sh /path/to/70b-model
+# The classifier always gets GPU 0; heretic gets every other GPU actually
+# granted (1..N-1) via its own device_map="auto" model-parallel sharding --
+# computed at runtime below, not hardcoded, so this scales to any N.
 #SBATCH --job-name=heretic-harmbench
 #SBATCH --partition=normal
 #SBATCH --account=a145
@@ -41,6 +51,22 @@ PARETO_ADAPTERS_DIR="/capstor/scratch/cscs/arthur/harmbench_results/${SLURM_JOB_
 # model instead, once bitten.
 MODEL_PATH="$1"
 shift
+
+# GPU 0 is always the classifier; heretic gets the rest (1..N-1), sized from
+# however many GPUs were actually requested at submission, not a hardcoded
+# count -- so --gpus-per-node=3 at submission time gives heretic GPUs "1,2"
+# automatically, no script edit needed.
+# NOTE: SLURM_GPUS_ON_NODE is NOT what it sounds like on this cluster --
+# verified empirically it reports the node's total physical GPU count (4),
+# not what --gpus-per-node actually requested. SLURM_GPUS_PER_NODE is the
+# one that matches the request (confirmed: --gpus-per-node=3 in, 3 out).
+TOTAL_GPUS="${SLURM_GPUS_PER_NODE:-2}"
+if [ "$TOTAL_GPUS" -lt 2 ]; then
+    echo "ERROR: need at least 2 GPUs (1 classifier + 1 heretic), got $TOTAL_GPUS." >&2
+    exit 1
+fi
+HERETIC_GPUS=$(seq -s, 1 $((TOTAL_GPUS - 1)))
+echo "Total GPUs: $TOTAL_GPUS (classifier: GPU 0, heretic: GPU(s) $HERETIC_GPUS)"
 
 cd "$REPO_DIR"
 
@@ -84,7 +110,7 @@ if [ "$READY" -ne 1 ]; then
     exit 1
 fi
 
-# --- Run heretic on GPU 1, pointed at the classifier over localhost ---
+# --- Run heretic on GPU(s) $HERETIC_GPUS, pointed at the classifier over localhost ---
 # --study-checkpoint-dir points at a HarmBench-specific directory (default is
 # "checkpoints") so this doesn't collide with a checkpoint from earlier
 # interactive runs on this same model.
@@ -112,7 +138,7 @@ fi
 # would otherwise crash on EOF (no TTY available here either).
 srun --ntasks=1 --overlap \
     --environment="$REPO_DIR/heretic.edf.toml" \
-    env CUDA_VISIBLE_DEVICES=1 heretic \
+    env CUDA_VISIBLE_DEVICES="$HERETIC_GPUS" heretic \
         --model "$MODEL_PATH" \
         --harmbench-classifier-url "$CLASSIFIER_URL" \
         --study-checkpoint-dir checkpoints-harmbench \
