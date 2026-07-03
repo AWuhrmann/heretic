@@ -34,6 +34,14 @@ CLASSIFIER_URL="http://localhost:${CLASSIFIER_PORT}/v1"
 # scratch (not inside the repo) since these are output artifacts, not code.
 PARETO_ADAPTERS_DIR="/capstor/scratch/cscs/arthur/harmbench_results/${SLURM_JOB_ID}/pareto_adapters"
 
+# Pulled out and passed as an explicit --model below (not left as a bare
+# trailing arg) so it can't collide with heretic's "last bare arg = model"
+# shorthand heuristic (main.py ~193-203) when extra flags like --n-trials
+# follow it -- that heuristic grabbed --n-trials's own value ("10") as the
+# model instead, once bitten.
+MODEL_PATH="$1"
+shift
+
 cd "$REPO_DIR"
 
 # --- One-time-ish data/config prep (cheap, idempotent, no GPU involved) ---
@@ -105,6 +113,7 @@ fi
 srun --ntasks=1 --overlap \
     --environment="$REPO_DIR/heretic.edf.toml" \
     env CUDA_VISIBLE_DEVICES=1 heretic \
+        --model "$MODEL_PATH" \
         --harmbench-classifier-url "$CLASSIFIER_URL" \
         --study-checkpoint-dir checkpoints-harmbench \
         --resume-study true \
