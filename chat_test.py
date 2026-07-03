@@ -43,39 +43,60 @@ def main():
 
     model.eval()
 
-    chat = [{"role": "system", "content": args.system_prompt}]
+    def fresh_chat():
+        return [{"role": "system", "content": args.system_prompt}]
+
+    chat = fresh_chat()
     streamer = TextStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
 
     print()
-    print("Chat ready. Empty message or Ctrl+C/Ctrl+D to exit.")
+    print("Chat ready. Empty message or Ctrl+D to exit, Ctrl+C to reset the chat.")
     print()
 
     while True:
         try:
             message = input("User: ")
-        except (EOFError, KeyboardInterrupt):
+        except EOFError:
             print()
             break
+        except KeyboardInterrupt:
+            print()
+            print("[Chat reset]")
+            print()
+            chat = fresh_chat()
+            continue
 
         if not message.strip():
             break
 
         chat.append({"role": "user", "content": message})
+        # return_dict=True: apply_chat_template's return type without it isn't
+        # guaranteed to be a bare tensor across transformers versions (hit a
+        # BatchEncoding with no .shape attribute here) -- request the dict
+        # explicitly and unpack it into generate() instead of guessing.
         inputs = tokenizer.apply_chat_template(
-            chat, add_generation_prompt=True, return_tensors="pt"
+            chat, add_generation_prompt=True, return_tensors="pt", return_dict=True
         ).to(model.device)
 
         print("Assistant: ", end="")
-        with torch.no_grad():
-            output = model.generate(
-                inputs,
-                max_new_tokens=args.max_new_tokens,
-                do_sample=True,
-                temperature=args.temperature,
-                streamer=streamer,
-            )
+        try:
+            with torch.no_grad():
+                output = model.generate(
+                    **inputs,
+                    max_new_tokens=args.max_new_tokens,
+                    do_sample=True,
+                    temperature=args.temperature,
+                    streamer=streamer,
+                )
+        except KeyboardInterrupt:
+            print()
+            print("[Generation interrupted, chat reset]")
+            print()
+            chat = fresh_chat()
+            continue
+
         response = tokenizer.decode(
-            output[0][inputs.shape[-1] :], skip_special_tokens=True
+            output[0][inputs["input_ids"].shape[-1] :], skip_special_tokens=True
         )
         chat.append({"role": "assistant", "content": response})
         print()
