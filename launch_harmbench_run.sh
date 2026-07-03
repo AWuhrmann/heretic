@@ -83,14 +83,19 @@ fi
 #
 # The checkpoint file itself is keyed by model path, not by job -- so every
 # sbatch resubmission against the same model shares one checkpoint file.
-# --resume-study (implicit-flag bool, like --orthogonalize-direction /
-# --no-orthogonalize-direction elsewhere in this CLI -- no value argument)
-# makes heretic continue it automatically instead of prompting "how would
-# you like to proceed?" (no TTY here, would crash on EOF) -- meaning a job
-# that got cancelled/timed out partway through picks up where it left off
-# on the next submission instead of losing all completed trials. If you
-# actually want to discard prior progress and start over, pass
-# --no-resume-study instead.
+# --resume-study true makes heretic continue it automatically instead of
+# prompting "how would you like to proceed?" (no TTY here, would crash on
+# EOF) -- meaning a job that got cancelled/timed out partway through picks
+# up where it left off on the next submission instead of losing all
+# completed trials. If you actually want to discard prior progress and
+# start over, pass --resume-study false instead.
+# NOTE: unlike plain-bool fields (e.g. --orthogonalize-direction /
+# --no-orthogonalize-direction), resume_study is `bool | None`, and
+# pydantic-settings' cli_implicit_flags does NOT give bool|None fields the
+# --flag/--no-flag treatment -- it requires an explicit value argument
+# ({bool,null}). Verified empirically against pydantic-settings==2.14.2
+# (the version actually installed in the image) after --resume-study alone
+# failed with "expected one argument".
 #
 # --save-pareto-adapters-dir closes the other interactive gap: once the study
 # finishes, heretic saves the LoRA adapter for every Pareto-optimal trial
@@ -102,7 +107,7 @@ srun --ntasks=1 --overlap \
     env CUDA_VISIBLE_DEVICES=1 heretic \
         --harmbench-classifier-url "$CLASSIFIER_URL" \
         --study-checkpoint-dir checkpoints-harmbench \
-        --resume-study \
+        --resume-study true \
         --save-pareto-adapters-dir "$PARETO_ADAPTERS_DIR" \
         "$@"
 
