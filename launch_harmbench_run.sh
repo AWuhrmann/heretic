@@ -74,8 +74,21 @@ if [ "$READY" -ne 1 ]; then
 fi
 
 # --- Run heretic on GPU 1, pointed at the classifier over localhost ---
+# --study-checkpoint-dir points at a HarmBench-specific directory (default is
+# "checkpoints") so this doesn't collide with any checkpoint left over from
+# earlier interactive runs on this same model -- if it did, heretic would hit
+# an interactive "resume previous study?" prompt, and there's no TTY here
+# (sbatch/srun --overlap, not --pty), so that prompt would crash with EOFError.
+#
+# NOTE: this only covers the *start* of the run. This fork predates upstream's
+# headless-operation support (added after our fork point), so the
+# *post-optimization* flow (trial selection, then "what do you want to do
+# with the model" menu) is still interactive with no CLI escape hatch found
+# so far -- once a run actually reaches 200/200 trials, expect it to hang/
+# crash there too. Not fixed yet; out of scope for just getting trials running.
 srun --ntasks=1 --overlap \
     --environment="$REPO_DIR/heretic.edf.toml" \
     env CUDA_VISIBLE_DEVICES=1 heretic \
         --harmbench-classifier-url "$CLASSIFIER_URL" \
+        --study-checkpoint-dir checkpoints-harmbench \
         "$@"
