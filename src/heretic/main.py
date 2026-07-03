@@ -358,7 +358,11 @@ def run():
         )
 
         print()
-        choice = prompt_select("How would you like to proceed?", choices)
+        if settings.resume_study is not None:
+            choice = "continue" if settings.resume_study else "restart"
+            print(f"Non-interactive resume_study={settings.resume_study}: {choice}.")
+        else:
+            choice = prompt_select("How would you like to proceed?", choices)
 
         if choice == "continue":
             settings = Settings.model_validate_json(

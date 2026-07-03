@@ -365,6 +365,16 @@ class Settings(BaseSettings):
         exclude=True,
     )
 
+    resume_study: bool | None = Field(
+        default=None,
+        description=(
+            "What to do if a checkpoint already exists for this model (keyed by model path, "
+            "not by run): true = continue it, false = discard it and restart from scratch, "
+            "unset = prompt interactively. Set this for headless runs (e.g. batch jobs with "
+            "no TTY), where that prompt would otherwise crash on EOF."
+        ),
+    )
+
     export_strategy: ExportStrategy | None = Field(
         default=None,
         description='How to export the model: "merge", "adapter", or unset to prompt the user.',

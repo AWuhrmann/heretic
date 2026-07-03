@@ -78,10 +78,19 @@ fi
 
 # --- Run heretic on GPU 1, pointed at the classifier over localhost ---
 # --study-checkpoint-dir points at a HarmBench-specific directory (default is
-# "checkpoints") so this doesn't collide with any checkpoint left over from
-# earlier interactive runs on this same model -- if it did, heretic would hit
-# an interactive "resume previous study?" prompt, and there's no TTY here
-# (sbatch/srun --overlap, not --pty), so that prompt would crash with EOFError.
+# "checkpoints") so this doesn't collide with a checkpoint from earlier
+# interactive runs on this same model.
+#
+# The checkpoint file itself is keyed by model path, not by job -- so every
+# sbatch resubmission against the same model shares one checkpoint file.
+# --resume-study (implicit-flag bool, like --orthogonalize-direction /
+# --no-orthogonalize-direction elsewhere in this CLI -- no value argument)
+# makes heretic continue it automatically instead of prompting "how would
+# you like to proceed?" (no TTY here, would crash on EOF) -- meaning a job
+# that got cancelled/timed out partway through picks up where it left off
+# on the next submission instead of losing all completed trials. If you
+# actually want to discard prior progress and start over, pass
+# --no-resume-study instead.
 #
 # --save-pareto-adapters-dir closes the other interactive gap: once the study
 # finishes, heretic saves the LoRA adapter for every Pareto-optimal trial
@@ -93,6 +102,7 @@ srun --ntasks=1 --overlap \
     env CUDA_VISIBLE_DEVICES=1 heretic \
         --harmbench-classifier-url "$CLASSIFIER_URL" \
         --study-checkpoint-dir checkpoints-harmbench \
+        --resume-study \
         --save-pareto-adapters-dir "$PARETO_ADAPTERS_DIR" \
         "$@"
 
