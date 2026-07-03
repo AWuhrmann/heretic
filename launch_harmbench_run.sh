@@ -40,11 +40,14 @@ fi
 cp config.harmbench.toml config.toml
 
 # --- Start the classifier server, in the background, on GPU 0 ---
+# No --max-model-len override: the model's own config caps at 2048
+# (max_position_embeddings), and our classifier prompts (HarmBench's rules
+# text + a short behavior + a short generation) comfortably fit well under
+# that, so just let vLLM derive it instead of forcing a too-large value.
 srun --ntasks=1 --overlap \
     --environment="$REPO_DIR/classifier.edf.toml" \
     env CUDA_VISIBLE_DEVICES=0 vllm serve cais/HarmBench-Llama-2-13b-cls \
         --port "$CLASSIFIER_PORT" \
-        --max-model-len 4096 \
     > "/capstor/scratch/cscs/arthur/classifier-${SLURM_JOB_ID}.log" 2>&1 &
 CLASSIFIER_PID=$!
 
